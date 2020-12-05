@@ -39,6 +39,7 @@ decode: func [
 
 hide-key: func [
 	"コード／文字列のAPIキー部分を「XXXX」に変換して返します"
+	api-key	[string!]	"APIキー"
 	code
 ][
 	load replace/deep form copy code api-key "XXXX"
@@ -46,7 +47,8 @@ hide-key: func [
 
 on-error: func [
 	"errorの内容をログとして書込みします。書込み先は %temp%/ChatWorkKeeper/ です"
-	error "エラー内容"
+	api-key	[string!]	"APIキー"
+	error				"エラー内容"
 	/local n path folder
 ][
 	attempt [
@@ -56,7 +58,7 @@ on-error: func [
 			n/date "-" pad/left/with n/time/hour 2 #"0" pad/left/with n/time/minute 2 #"0" take/part form n/time/second 7 ".log"
 		] ":" "-"
 		unless exists? folder [create-dir folder]
-		save path hide-key error
+		save path hide-key api-key error
 	]
 
 	error
@@ -86,25 +88,26 @@ handle: func [
 
 download: func [
 	"ChatWork APIを使い、メッセージとファイルをダウンロードします"
-	destination [file!] "書込み先フォルダ"
+	api-key		[string!]	"APIキー"
+	destination [file!]		"書込み先フォルダ"
 	/local error code response maps map room-id json message-folder result file-id
 ][
 
 	error: try [
-		result: get-rooms
-		unless result/success? [on-error result return false]
+		result: get-rooms api-key
+		unless result/success? [on-error api-key result return false]
 
 		result: save-rooms destination result/json
-		unless result/success? [on-error result return false]
+		unless result/success? [on-error api-key result return false]
 
 		foreach room-id result/room-ids [
 
 			catch [
-				result: get-messages room-id
+				result: get-messages api-key room-id
 
 				case [
 					result/status = 'empty [throw 'empty]
-					result/status = 'error [on-error result throw 'error]
+					result/status = 'error [on-error api-key result throw 'error]
 				]
 				json: result/json
 				message-folder: rejoin [destination "messages/"]
@@ -115,11 +118,11 @@ download: func [
 			]
 
 			catch [
-				result: file-ids? room-id
+				result: file-ids? api-key room-id
 
 				case [
 					result/status = 'empty [throw 'empty]
-					result/status = 'error [on-error result throw 'error]
+					result/status = 'error [on-error api-key result throw 'error]
 				]
 
 				file-folder: rejoin [destination "files/"]
@@ -128,11 +131,11 @@ download: func [
 
 					if downloaded? room-id file-id file-folder [continue]
 
-					result: get-url room-id file-id
-					unless result/success? [on-error result continue]
+					result: get-url api-key room-id file-id
+					unless result/success? [on-error api-key result continue]
 
 					result: download-file result/url rejoin [file-folder room-id "-" file-id "-" result/filename]
-					unless result/success? [on-error result]
+					unless result/success? [on-error api-key result]
 				]
 			]
 		]
@@ -142,13 +145,14 @@ download: func [
 
 	; elseに入ることはないはずだが念のため
 	case [
-		error? error [ on-error object compose [success?: false error: (error) room-id: (either value? room-id [room-id][none]) last-result: result file-id: (either value? file-id [file-id][none])] ]
-		'else        [ object            [success?: true] ]
+		error? error [ on-error api-key object compose [success?: false error: (error) room-id: (either value? room-id [room-id][none]) last-result: result file-id: (either value? file-id [file-id][none])] ]
+		'else        [ 					object		   [success?: true] ]
 	]
 ]
 
 get-rooms: func [
 	"自分のチャット一覧を取得します"
+	api-key	[string!] "APIキー"
 	/local error code response
 ][
 	error: try code: compose/deep [
@@ -185,7 +189,8 @@ save-rooms: func [
 
 get-messages: func [
 	"チャットに紐づくメッセージを取得します"
-	room-id [integer!]	"チャットID"
+	api-key		[string!]	"APIキー"
+	room-id 	[integer!]	"チャットID"
 	/local error code response
 ][
 	; メッセージの取得
@@ -244,7 +249,8 @@ convert-message: func [
 
 file-ids?: func [
 	"チャットに紐づくファイルのIDのリスト（block!）を取得します"
-	room-id	[integer!]	"チャットID"
+	api-key		[string!]	"APIキー"
+	room-id		[integer!]	"チャットID"
 	/local error code response int
 ][
 	; ファイル一覧を取得
@@ -288,6 +294,7 @@ downloaded?: func [
 
 get-url: func [
 	"ファイルダウンロード用のURLを取得します"
+	api-key	[string!]	"APIキー"
 	room-id	[integer!]	"チャットID"
 	file-id	[string!]	"ファイルID"
 	/local error code response map
@@ -344,11 +351,10 @@ view/options [
 		pad 0x5 text "保存先フォルダ" return
 		pad 0x5 b: button "実行" [
 			b/enabled?: false
-			api-key: k/text
 			destination: to-red-file rejoin [dirize d/text "chatwork-backup/"]
 			unless exists? destination [create-dir destination]
 
-			result: try [download destination]
+			result: try [download k/text destination]
 			alert either result/success? ["処理が終了しました。"]["エラーが発生しました。ログファイルを確認してください。"]
 			unview
 		]
