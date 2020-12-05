@@ -279,7 +279,7 @@ downloaded?: func [
 	room-id		[integer!]	"チャットID"
 	file-id		[string!]	"ファイルID"
 	file-folder	[file!]		"ファイル出力フォルダ"
-	/local file-folder parts
+	/local parts
 ][
 	unless exists? file-folder [return false]
 
