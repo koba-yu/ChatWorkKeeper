@@ -213,7 +213,7 @@ save-messages: func [
 	room-id			[integer!]	"チャットID"
 	json			[string!]	"メッセージのJSON"
 	message-folder	[file!]		"メッセージ出力フォルダ"
-	/local error message-folder
+	/local error
 ][
 	error: try [
 		unless exists? message-folder [create-dir message-folder]
