@@ -92,51 +92,48 @@ download: func [
 	destination [file!]		"書込み先フォルダ"
 	/local error code response maps map room-id json message-folder result file-id
 ][
-
 	error: try [
 		result: get-rooms api-key
 		unless result/success? [on-error api-key result return false]
 
 		result: save-rooms destination result/json
 		unless result/success? [on-error api-key result return false]
+		room-ids: result/room-ids
 
-		foreach room-id result/room-ids [
+		foreach room-id room-ids [
+			result: get-messages api-key room-id
 
-			catch [
-				result: get-messages api-key room-id
+			case [
+				result/status = 'empty [continue]
+				result/status = 'error [on-error api-key result continue]
+			]
+			json: result/json
+			message-folder: rejoin [destination "messages/"]
 
-				case [
-					result/status = 'empty [throw 'empty]
-					result/status = 'error [on-error api-key result throw 'error]
-				]
-				json: result/json
-				message-folder: rejoin [destination "messages/"]
+			result: save-messages room-id json message-folder
+			unless result/success? [on-error api-key result continue]
+			convert-message room-id json message-folder
+		]
 
-				result: save-messages room-id json message-folder
-				unless result/success? [throw 'error]
-				convert-message room-id json message-folder
+		foreach room-id room-ids [
+			result: file-ids? api-key room-id
+
+			case [
+				result/status = 'empty [continue]
+				result/status = 'error [on-error api-key result continue]
 			]
 
-			catch [
-				result: file-ids? api-key room-id
+			file-folder: rejoin [destination "files/"]
 
-				case [
-					result/status = 'empty [throw 'empty]
-					result/status = 'error [on-error api-key result throw 'error]
-				]
+			foreach file-id result/file-ids [
 
-				file-folder: rejoin [destination "files/"]
+				if downloaded? room-id file-id file-folder [continue]
 
-				foreach file-id result/file-ids [
+				result: get-url api-key room-id file-id
+				unless result/success? [on-error api-key result continue]
 
-					if downloaded? room-id file-id file-folder [continue]
-
-					result: get-url api-key room-id file-id
-					unless result/success? [on-error api-key result continue]
-
-					result: download-file result/url rejoin [file-folder room-id "-" file-id "-" result/filename]
-					unless result/success? [on-error api-key result]
-				]
+				result: download-file result/url rejoin [file-folder room-id "-" file-id "-" result/filename]
+				unless result/success? [on-error api-key result]
 			]
 		]
 
