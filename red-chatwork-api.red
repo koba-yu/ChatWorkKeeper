@@ -84,13 +84,10 @@ handle: func [
 	]
 ]
 
-message-folder?: func ["メッセージ出力フォルダのパスを取得します"][rejoin [destination "messages/"]]
-file-folder?: func ["ファイル出力フォルダのパスを取得します"][rejoin [destination "files/"]]
-
 download: func [
 	"ChatWork APIを使い、メッセージとファイルをダウンロードします"
 	destination [file!] "書込み先フォルダ"
-	/local error code response maps map room-id json result file-id
+	/local error code response maps map room-id json message-folder result file-id
 ][
 
 	error: try [
@@ -110,10 +107,11 @@ download: func [
 					result/status = 'error [on-error result throw 'error]
 				]
 				json: result/json
+				message-folder: rejoin [destination "messages/"]
 
-				result: save-messages room-id json
+				result: save-messages room-id json message-folder
 				unless result/success? [throw 'error]
-				convert-message room-id json
+				convert-message room-id json message-folder
 			]
 
 			catch [
@@ -124,22 +122,24 @@ download: func [
 					result/status = 'error [on-error result throw 'error]
 				]
 
+				file-folder: rejoin [destination "files/"]
+
 				foreach file-id result/file-ids [
 
-					if downloaded? room-id file-id [continue]
+					if downloaded? room-id file-id file-folder [continue]
 
 					result: get-url room-id file-id
 					unless result/success? [on-error result continue]
 
-					result: download-file result/url rejoin [file-folder? room-id "-" file-id "-" result/filename]
+					result: download-file result/url rejoin [file-folder room-id "-" file-id "-" result/filename]
 					unless result/success? [on-error result]
 				]
 			]
 		]
 
-		return object [success?: true] 
+		return object [success?: true]
 	]
-	
+
 	; elseに入ることはないはずだが念のため
 	case [
 		error? error [ on-error object compose [success?: false error: (error) room-id: (either value? room-id [room-id][none]) last-result: result file-id: (either value? file-id [file-id][none])] ]
@@ -205,12 +205,12 @@ get-messages: func [
 
 save-messages: func [
 	"メッセージのJSONをローカルに保存します"
-	room-id	[integer!]	"チャットID"
-	json	[string!]	"メッセージのJSON"
+	room-id			[integer!]	"チャットID"
+	json			[string!]	"メッセージのJSON"
+	message-folder	[file!]		"メッセージ出力フォルダ"
 	/local error message-folder
 ][
 	error: try [
-		message-folder: message-folder?
 		unless exists? message-folder [create-dir message-folder]
 		save rejoin [message-folder "message-" room-id ".json"] json
 		'ok
@@ -224,14 +224,15 @@ save-messages: func [
 
 convert-message: func [
 	"メッセージのJSONをmap!に変換して保存します"
-	room-id	[integer!]	"チャットID"
-	json	[string!]	"メッセージのJSON"
+	room-id			[integer!]	"チャットID"
+	json			[string!]	"メッセージのJSON"
+	message-folder	[file!]		"メッセージ出力フォルダ"
 	/local error code maps map
 ][
 	error: try code: [
 		maps: load/as json 'json
 		foreach map maps [map/body: decode map/body]
-		save rejoin [message-folder? "message-" room-id ".red"] maps
+		save rejoin [message-folder "message-" room-id ".red"] maps
 		'ok
 	]
 
@@ -269,11 +270,11 @@ file-ids?: func [
 
 downloaded?: func [
 	"指定されたIDのファイルがすでにダウンロード済みか確認します"
-	room-id	[integer!]	"チャットID"
-	file-id	[string!]	"ファイルID"
+	room-id		[integer!]	"チャットID"
+	file-id		[string!]	"ファイルID"
+	file-folder	[file!]		"ファイル出力フォルダ"
 	/local file-folder parts
 ][
-	file-folder: file-folder?
 	unless exists? file-folder [return false]
 
 	parts: rejoin [room-id "-" file-id "-"]
@@ -323,7 +324,7 @@ download-file: func [
 
 	unless error? file [
 		writing: try [
-			file-folder: file-folder?
+			file-folder: first split-path destination
 			unless exists? file-folder [create-dir file-folder]
 			write destination file
 			'ok
