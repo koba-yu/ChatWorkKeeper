@@ -1,4 +1,5 @@
 libRedRT-defs.r
+libRedRT-extras.r
 libRedRT-include.red
 libRedRT.dll
 *.exe
