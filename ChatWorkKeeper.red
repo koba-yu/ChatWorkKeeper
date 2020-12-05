@@ -90,7 +90,7 @@ download: func [
 	"ChatWork APIを使い、メッセージとファイルをダウンロードします"
 	api-key		[string!]	"APIキー"
 	destination [file!]		"書込み先フォルダ"
-	/local error code response maps map room-id json message-folder result file-id
+	/local error code response maps map room-id json message-folder result file-folder saved-files file x file-id
 ][
 	error: try [
 		result: get-rooms api-key
@@ -120,6 +120,14 @@ download: func [
 			convert-message room-id json message-folder
 		]
 
+		file-folder: rejoin [destination "files/"]
+		saved-files: make hash! collect [foreach file read file-folder [
+				x: take/part split form file "-" 2	; "-" で分割
+				x: head insert at x 2 "-"			; 2番目に "-" を入れてインデックスを先頭に戻す
+				keep rejoin x
+			]
+		]
+
 		foreach room-id room-ids [
 			result: file-ids? api-key room-id
 
@@ -128,11 +136,9 @@ download: func [
 				result/status = 'error [on-error api-key result continue]
 			]
 
-			file-folder: rejoin [destination "files/"]
-
 			foreach file-id result/file-ids [
 
-				if file-downloaded? room-id file-id file-folder [continue]
+				if find saved-files rejoin [room-id "-" file-id] [continue]
 
 				result: get-url api-key room-id file-id
 				unless result/success? [on-error api-key result continue]
@@ -290,24 +296,6 @@ file-ids?: func [
 			]
 		]
 	]
-]
-
-file-downloaded?: func [
-	"指定されたIDのファイルがすでにダウンロード済みか確認します"
-	room-id		[integer!]	"チャットID"
-	file-id		[string!]	"ファイルID"
-	file-folder	[file!]		"ファイル出力フォルダ"
-	/local parts file
-][
-	unless exists? file-folder [return false]
-
-	parts: rejoin [room-id "-" file-id "-"]
-
-	foreach file read file-folder [
-		if (take/part file length? parts) = parts [return true]
-	]
-
-	false
 ]
 
 get-url: func [
