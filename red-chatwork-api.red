@@ -39,9 +39,9 @@ decode: func [
 
 hide-key: func [
 	"コード／文字列のAPIキー部分を「XXXX」に変換して返します"
-	code [block! string!]
+	code
 ][
-	replace/deep copy code api-key "XXXX"
+	load replace/deep form copy code api-key "XXXX"
 ]
 
 on-error: func [
@@ -56,8 +56,7 @@ on-error: func [
 			n/date "-" pad/left/with n/time/hour 2 #"0" pad/left/with n/time/minute 2 #"0" take/part form n/time/second 7 ".log"
 		] ":" "-"
 		unless exists? folder [create-dir folder]
-		; save path load hide-key form error
-		save path error
+		save path hide-key error
 	]
 
 	error
