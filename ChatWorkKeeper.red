@@ -101,6 +101,11 @@ download: func [
 		room-ids: result/room-ids
 
 		foreach room-id room-ids [
+
+			message-folder: rejoin [destination "messages/"]
+
+			if message-converted? message-folder room-id [continue]
+
 			result: get-messages api-key room-id
 
 			case [
@@ -108,10 +113,10 @@ download: func [
 				result/status = 'error [on-error api-key result continue]
 			]
 			json: result/json
-			message-folder: rejoin [destination "messages/"]
 
 			result: save-messages room-id json message-folder
 			unless result/success? [on-error api-key result continue]
+
 			convert-message room-id json message-folder
 		]
 
@@ -127,7 +132,7 @@ download: func [
 
 			foreach file-id result/file-ids [
 
-				if downloaded? room-id file-id file-folder [continue]
+				if file-downloaded? room-id file-id file-folder [continue]
 
 				result: get-url api-key room-id file-id
 				unless result/success? [on-error api-key result continue]
@@ -184,6 +189,22 @@ save-rooms: func [
 	]
 ]
 
+message-converted?: func [
+	"メッセージがダウンロード済みか確認します"
+	message-folder	[file!]		"出力フォルダ"
+	room-id			[integer!]	"チャットID"
+][
+	exists? path-to-convert? message-folder room-id
+]
+
+path-to-convert?: func [
+	"メッセージ変換の出力先ファイルパスを返します"
+	message-folder	[file!]		"出力フォルダ"
+	room-id			[integer!]	"チャットID"
+][
+	rejoin [message-folder "message-" room-id ".red"]
+]
+
 get-messages: func [
 	"チャットに紐づくメッセージを取得します"
 	api-key		[string!]	"APIキー"
@@ -234,7 +255,7 @@ convert-message: func [
 	error: try code: [
 		maps: load/as json 'json
 		foreach map maps [map/body: decode map/body]
-		save rejoin [message-folder "message-" room-id ".red"] maps
+		save path-to-convert? message-folder room-id maps
 		'ok
 	]
 
@@ -271,12 +292,12 @@ file-ids?: func [
 	]
 ]
 
-downloaded?: func [
+file-downloaded?: func [
 	"指定されたIDのファイルがすでにダウンロード済みか確認します"
 	room-id		[integer!]	"チャットID"
 	file-id		[string!]	"ファイルID"
 	file-folder	[file!]		"ファイル出力フォルダ"
-	/local parts
+	/local parts file
 ][
 	unless exists? file-folder [return false]
 
