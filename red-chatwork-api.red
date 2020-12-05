@@ -355,7 +355,7 @@ view/options [
 			unless exists? destination [create-dir destination]
 
 			result: try [download k/text destination]
-			alert either result/success? ["処理が終了しました。"]["エラーが発生しました。ログファイルを確認してください。"]
+			alert either result/success? ["処理が終了しました。"]["エラーが発生しました。"]
 			unview
 		]
 	]
