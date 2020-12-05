@@ -42,7 +42,7 @@ hide-key: func [
 	api-key	[string!]	"APIキー"
 	code
 ][
-	load replace/deep form copy code api-key "XXXX"
+	load replace/deep mold copy code api-key "XXXX"
 ]
 
 on-error: func [
@@ -55,7 +55,7 @@ on-error: func [
 		n: now/precise
 		path: replace/all rejoin [
 			folder: rejoin [to-red-file dirize get-env "temp" 'ChatWorkKeeper "/"]
-			n/date "-" pad/left/with n/time/hour 2 #"0" pad/left/with n/time/minute 2 #"0" take/part form n/time/second 7 ".log"
+			n/date "-" pad/left/with n/time/hour 2 #"0" pad/left/with n/time/minute 2 #"0" take/part mold n/time/second 7 ".log"
 		] ":" "-"
 		unless exists? folder [create-dir folder]
 		save path hide-key api-key error
