@@ -1,5 +1,5 @@
 Red [
-	Title: "ChatWorkWorkKeeper"
+	Title: "ChatWorkKeeper"
 	Needs: 'View
 	Author: "Koba-yu"
 ]
