@@ -121,6 +121,7 @@ download: func [
 		]
 
 		file-folder: rejoin [destination "files/"]
+		unless exists? file-folder [create-dir file-folder]
 		saved-files: make hash! collect [foreach file read file-folder [
 				x: take/part split form file "-" 2	; "-" で分割
 				x: head insert at x 2 "-"			; 2番目に "-" を入れてインデックスを先頭に戻す
@@ -357,16 +358,18 @@ view/options [
 		pad 0x5 text "保存先フォルダ" return
 		pad 0x5 b: button "実行" [
 			b/enabled?: false
-			destination: to-red-file rejoin [dirize d/text "chatwork-backup/"]
+
+			unless exists? folder: to-red-file dirize folder/text [create-dir folder]
+			destination: to-red-file rejoin [folder "chatwork-backup/"]
 			unless exists? destination [create-dir destination]
 
-			result: try [download k/text destination]
+			result: try [download key/text destination]
 			alert either result/success? ["処理が終了しました。"]["エラーが発生しました。"]
 			unview
 		]
 	]
 	panel 330x120 [
-		k: field 300x30 password return
-		d: field 300x30
+		key: field 300x30 password return
+		folder: field 300x30
 	]
 ][text: "ChatWorkKeeper"]
