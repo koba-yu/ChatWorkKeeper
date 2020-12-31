@@ -75,7 +75,7 @@ handle: func [
 		204 [204]
 		429 [
 			try [
-				reset-time: ((to-date to-integer response/2/X-RateLimit-Reset) + 0:0:1)
+				reset-time: (to-date to-integer response/2/X-RateLimit-Reset) + 0:0:1
 				wait difference reset-time now/utc
 				response*: do code
 				response*/1
